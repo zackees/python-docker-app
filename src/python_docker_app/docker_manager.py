@@ -726,11 +726,17 @@ class DockerManager:
 
         # Remove all containers using this image
         try:
-            containers = self.client.containers.list(all=True)
+            containers: list[Container] = self.client.containers.list(all=True)
             for container in containers:
-                if any(image_name in tag for tag in container.image.tags):
-                    print(f"Removing container {container.name}")
-                    container.remove(force=True)
+                # if any(image_name in tag for tag in container.image.tags):
+                #     print(f"Removing container {container.name}")
+                #     container.remove(force=True)
+                if container.image and container.image.tags:
+                    for tag in container.image.tags:
+                        if image_name in tag:
+                            print(f"Removing container {container.name}")
+                            container.remove(force=True)
+                            break
 
         except Exception as e:
             print(f"Error removing containers: {e}")

@@ -9,8 +9,6 @@ Tuned solution for running applications where the payload is a Docker image.
 [![Ubuntu_Tests](../../actions/workflows/push_ubuntu.yml/badge.svg)](../../actions/workflows/push_ubuntu.yml)
 [![Win_Tests](../../actions/workflows/push_win.yml/badge.svg)](../../actions/workflows/push_win.yml)
 
-Replace `template-python-cmd` and `template_python_cmd` with your command. Run tox until it's
-correct.
 
 To develop software, run `. ./activate.sh`
 
