@@ -44,8 +44,9 @@ def _win32_docker_location() -> str | None:
     return None
 
 
-def get_lock(image_name: str) -> FileLock:
+def get_lock(image_nm: str, tag: str) -> FileLock:
     """Get the file lock for this DockerManager instance."""
+    image_name = f"{image_nm}-{tag}"
     lock_file = CONFIG_DIR / f"{image_name}.lock"
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     print(CONFIG_DIR)
@@ -237,7 +238,7 @@ class DockerManager:
         remote_image_hash_from_local_image: str | None = None
         remote_image_hash: str | None = None
 
-        with get_lock(f"{image_name}-{tag}"):
+        with get_lock(image_name, tag):
             try:
                 local_image = self.client.images.get(f"{image_name}:{tag}")
                 print(f"Image {image_name}:{tag} is already available.")
