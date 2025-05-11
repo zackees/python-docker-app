@@ -12,7 +12,6 @@ import threading
 import time
 import traceback
 import warnings
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -26,6 +25,7 @@ from docker.models.images import Image
 from filelock import FileLock
 
 from python_docker_app.spinner import Spinner
+from python_docker_app.volume import Volume
 
 CONFIG_DIR = Path(user_data_dir("python-docker-app", "python-docker-app"))
 CONFIG_DIR.mkdir(parents=True, exist_ok=True)
@@ -63,40 +63,6 @@ def get_lock(image_name: str) -> FileLock:
     out: FileLock
     out = FileLock(str(lock_file))  # type: ignore
     return out
-
-
-@dataclass
-class Volume:
-    """
-    Represents a Docker volume mapping between host and container.
-
-    Attributes:
-        host_path: Path on the host system (e.g., "C:\\Users\\username\\project")
-        container_path: Path inside the container (e.g., "/app/data")
-        mode: Access mode, "rw" for read-write or "ro" for read-only
-    """
-
-    host_path: str
-    container_path: str
-    mode: str = "rw"
-
-    def to_dict(self) -> dict[str, dict[str, str]]:
-        """Convert the Volume object to the format expected by Docker API."""
-        return {self.host_path: {"bind": self.container_path, "mode": self.mode}}
-
-    @classmethod
-    def from_dict(cls, volume_dict: dict[str, dict[str, str]]) -> list["Volume"]:
-        """Create Volume objects from a Docker volume dictionary."""
-        volumes = []
-        for host_path, config in volume_dict.items():
-            volumes.append(
-                cls(
-                    host_path=host_path,
-                    container_path=config["bind"],
-                    mode=config.get("mode", "rw"),
-                )
-            )
-        return volumes
 
 
 class RunningContainer:
