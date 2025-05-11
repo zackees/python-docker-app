@@ -2,17 +2,14 @@
 New abstraction for Docker management with improved Ctrl+C handling.
 """
 
-import _thread
 import json
 import os
 import platform
 import subprocess
 import sys
-import threading
 import time
 import traceback
 import warnings
-from datetime import datetime, timezone
 from pathlib import Path
 
 import docker
@@ -24,6 +21,7 @@ from docker.models.containers import Container
 from docker.models.images import Image
 from filelock import FileLock
 
+from python_docker_app.running_container import RunningContainer
 from python_docker_app.spinner import Spinner
 from python_docker_app.volume import Volume
 
@@ -32,13 +30,6 @@ CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 DB_FILE = CONFIG_DIR / "db.db"
 DISK_CACHE = DiskLRUCache(str(DB_FILE), 10)
 _IS_GITHUB = "GITHUB_ACTIONS" in os.environ
-
-
-# Docker uses datetimes in UTC but without the timezone info. If we pass in a tz
-# then it will throw an exception.
-def _utc_now_no_tz() -> datetime:
-    now = datetime.now(timezone.utc)
-    return now.replace(tzinfo=None)
 
 
 def _win32_docker_location() -> str | None:
@@ -63,52 +54,6 @@ def get_lock(image_name: str) -> FileLock:
     out: FileLock
     out = FileLock(str(lock_file))  # type: ignore
     return out
-
-
-class RunningContainer:
-    def __init__(
-        self,
-        container: Container,
-        first_run: bool = False,
-    ) -> None:
-        self.container = container
-        self.first_run = first_run
-        self.running = True
-        self.thread = threading.Thread(target=self._log_monitor)
-        self.thread.daemon = True
-        self.thread.start()
-
-    def _log_monitor(self):
-        from_date = _utc_now_no_tz() if not self.first_run else None
-        to_date = _utc_now_no_tz()
-
-        while self.running:
-            try:
-                for log in self.container.logs(
-                    follow=False, since=from_date, until=to_date, stream=True
-                ):
-                    print(log.decode("utf-8"), end="")
-                    # self.filter.print(log)
-                time.sleep(0.1)
-                from_date = to_date
-                to_date = _utc_now_no_tz()
-            except KeyboardInterrupt:
-                print("Monitoring logs interrupted by user.")
-                _thread.interrupt_main()
-                break
-            except Exception as e:
-                print(f"Error monitoring logs: {e}")
-                break
-
-    def detach(self) -> None:
-        """Stop monitoring the container logs"""
-        self.running = False
-        self.thread.join()
-
-    def stop(self) -> None:
-        """Stop the container"""
-        self.container.stop()
-        self.detach()
 
 
 def _hack_to_fix_mac(volumes: list[Volume] | None) -> list[Volume] | None:
