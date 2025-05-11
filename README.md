@@ -1,5 +1,7 @@
-# template-python-cmd
-A template for quickly making a python lib that has a command line program attached
+# python-docker-app
+
+Tuned solution for running applications where the payload is a Docker image.
+
 
 [![Linting](../../actions/workflows/lint.yml/badge.svg)](../../actions/workflows/lint.yml)
 
