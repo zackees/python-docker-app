@@ -23,7 +23,7 @@ from filelock import FileLock
 
 from python_docker_app.running_container import RunningContainer
 from python_docker_app.spinner import Spinner
-from python_docker_app.volume import Volume
+from python_docker_app.volume import Volume, hack_to_fix_mac
 
 CONFIG_DIR = Path(user_data_dir("python-docker-app", "python-docker-app"))
 CONFIG_DIR.mkdir(parents=True, exist_ok=True)
@@ -54,40 +54,6 @@ def get_lock(image_name: str) -> FileLock:
     out: FileLock
     out = FileLock(str(lock_file))  # type: ignore
     return out
-
-
-def _hack_to_fix_mac(volumes: list[Volume] | None) -> list[Volume] | None:
-    """Fixes the volume mounts on MacOS by removing the mode."""
-    if volumes is None:
-        return None
-    if sys.platform != "darwin":
-        # Only macos needs hacking.
-        return volumes
-
-    volumes = volumes.copy()
-    # Work around a Docker bug on MacOS where the expected network socket to the
-    # the host is not mounted correctly. This was actually fixed in recent versions
-    # of docker client but there is a large chunk of Docker clients out there with
-    # this bug in it.
-    #
-    # This hack is done by mounting the socket directly to the container.
-    # This socket talks to the docker daemon on the host.
-    #
-    # Found here.
-    # https://github.com/docker/docker-py/issues/3069#issuecomment-1316778735
-    # if it exists already then return the input
-    for volume in volumes:
-        if volume.host_path == "/var/run/docker.sock":
-            return volumes
-    # ok it doesn't exist, so add it
-    volumes.append(
-        Volume(
-            host_path="/var/run/docker.sock",
-            container_path="/var/run/docker.sock",
-            mode="rw",
-        )
-    )
-    return volumes
 
 
 class DockerManager:
@@ -445,7 +411,7 @@ class DockerManager:
             ports: Dict mapping host ports to container ports
                     Example: {8080: 80} maps host port 8080 to container port 80
         """
-        volumes = _hack_to_fix_mac(volumes)
+        volumes = hack_to_fix_mac(volumes)
         # Convert volumes to the format expected by Docker API
         volumes_dict = None
         if volumes is not None:
@@ -533,7 +499,7 @@ class DockerManager:
         ports: dict[int, int] | None = None,
     ) -> None:
         # Convert volumes to the format expected by Docker API
-        volumes = _hack_to_fix_mac(volumes)
+        volumes = hack_to_fix_mac(volumes)
         volumes_dict = None
         if volumes is not None:
             volumes_dict = {}
